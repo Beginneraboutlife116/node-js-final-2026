@@ -5,3 +5,5 @@ coverage/
 *.log
 dist/
 jest-result.json
+
+.vscode
