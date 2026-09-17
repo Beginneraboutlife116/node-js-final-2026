@@ -4,17 +4,18 @@
  * Module dependencies.
  */
 
-const app = require("../app");
+const { configDotenv } = require("dotenv");
+configDotenv();
+
 const debug = require("debug")("backend:server");
 const http = require("node:http");
 
-const dotenv = require("dotenv");
+const app = require("../app");
+const { dataSource } = require("../db");
 
 /**
  * Get port from environment and store in Express.
  */
-
-dotenv.config();
 
 const port = normalizePort(process.env.PORT || "3000");
 app.set("port", port);
@@ -29,9 +30,19 @@ const server = http.createServer(app);
  * Listen on provided port, on all network interfaces.
  */
 
-server.listen(port);
 server.on("error", onError);
 server.on("listening", onListening);
+
+dataSource
+	.initialize()
+	.then(() => {
+		console.log("Database connected successfully");
+		server.listen(port);
+	})
+	.catch((error) => {
+		console.error("Failed to connect to database: ", error);
+		process.exit(1);
+	});
 
 /**
  * Normalize a port into a number, string, or false.
