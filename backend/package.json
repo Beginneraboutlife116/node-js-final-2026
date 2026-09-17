@@ -1,18 +1,21 @@
 {
-  "name": "backend",
-  "version": "0.0.0",
-  "private": true,
-  "scripts": {
-	"dev": "node --watch ./bin/www",
-    "start": "node ./bin/www"
-  },
-  "dependencies": {
-    "cookie-parser": "~1.4.4",
-    "debug": "~2.6.9",
-    "dotenv": "^17.4.2",
-    "express": "~4.16.1",
-    "morgan": "~1.9.1",
-    "pg": "^8.23.0",
-    "typeorm": "^1.1.1"
-  }
+	"name": "backend",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"dev": "node --watch ./bin/www",
+		"start": "node ./bin/www",
+		"migration:generate": "typeorm migration:generate -d ./db/index.js -o",
+		"migration:run": "typeorm migration:run -d ./db/index.js",
+		"migration:revert": "typeorm migration:revert -d ./db/index.js"
+	},
+	"dependencies": {
+		"cookie-parser": "~1.4.4",
+		"debug": "~2.6.9",
+		"dotenv": "^17.4.2",
+		"express": "~4.16.1",
+		"morgan": "~1.9.1",
+		"pg": "^8.23.0",
+		"typeorm": "^1.1.1"
+	}
 }
