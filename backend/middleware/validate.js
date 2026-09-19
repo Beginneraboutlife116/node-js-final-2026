@@ -10,7 +10,7 @@ function validate(req, _res, next) {
 
 	const { msg } = result.array()[0];
 
-	next(new AppError(400, msg));
+	return next(new AppError(400, msg));
 }
 
 module.exports = validate;
