@@ -19,7 +19,7 @@ const DUMMY_PASSWORD_HASH = bcrypt.hashSync(
 router.post(
 	"/signup",
 	body(["name", "email"], "欄位未填寫正確").isString().bail().trim().notEmpty(),
-	body("email", "欄位未填寫正確").isEmail(),
+	body("email", "欄位未填寫正確").isEmail().toLowerCase(),
 	body("password")
 		.isString()
 		.bail()
@@ -45,11 +45,23 @@ router.post(
 			Number(process.env.SALT_ROUNDS) || 10,
 		);
 
-		const newUser = await userRepository.save({
-			name,
-			email,
-			password: hashedPassword,
-		});
+		// 上面的 findOneBy 只是為了回漂亮的 409；併發時兩個請求會同時通過檢查，
+		// 真正的保證來自 users.email 的唯一約束（Postgres unique_violation = 23505）。
+		let newUser;
+
+		try {
+			newUser = await userRepository.save({
+				name,
+				email,
+				password: hashedPassword,
+			});
+		} catch (error) {
+			if (error.code === "23505") {
+				return next(new AppError(409, "Email 已被使用"));
+			}
+
+			throw error;
+		}
 
 		return res.status(201).json({
 			status: "success",
@@ -71,7 +83,8 @@ router.post(
 		.trim()
 		.notEmpty()
 		.bail()
-		.isEmail(),
+		.isEmail()
+		.toLowerCase(),
 	body("password")
 		.isString()
 		.bail()

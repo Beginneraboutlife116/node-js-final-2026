@@ -1,11 +1,11 @@
 const jwt = require("jsonwebtoken");
 
-const { AppError } = require("../utils");
+const { AppError, catchAsync } = require("../utils");
 const { dataSource } = require("../db");
 
 const userRepository = dataSource.getRepository("User");
 
-async function authenticate(req, _res, next) {
+const authenticate = catchAsync(async (req, _res, next) => {
 	const { authorization } = req.headers;
 
 	if (!authorization?.startsWith("Bearer ")) {
@@ -38,6 +38,6 @@ async function authenticate(req, _res, next) {
 
 	req.user = foundUser;
 	return next();
-}
+});
 
 module.exports = authenticate;
