@@ -10,11 +10,13 @@
 		"migration:revert": "typeorm migration:revert -d ./db/index.js"
 	},
 	"dependencies": {
+		"bcrypt": "^6.0.0",
 		"cookie-parser": "~1.4.4",
 		"debug": "~2.6.9",
 		"dotenv": "^17.4.2",
 		"express": "~4.16.1",
 		"express-validator": "^7.3.2",
+		"jsonwebtoken": "^9.0.3",
 		"morgan": "~1.9.1",
 		"pg": "^8.23.0",
 		"typeorm": "^1.1.1"
