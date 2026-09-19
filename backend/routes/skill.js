@@ -36,7 +36,7 @@ router.post(
 			name,
 		});
 
-		if (foundSkill) {
+		if (foundSkill !== null) {
 			return next(new AppError(409, "資料重複"));
 		}
 

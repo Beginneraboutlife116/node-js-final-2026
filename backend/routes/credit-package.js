@@ -41,7 +41,7 @@ router.post(
 			name,
 		});
 
-		if (foundPackage) {
+		if (foundPackage !== null) {
 			return next(new AppError(409, "資料重複"));
 		}
 
