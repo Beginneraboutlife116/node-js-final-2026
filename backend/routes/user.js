@@ -5,11 +5,14 @@ const jwt = require("jsonwebtoken");
 
 const router = express.Router();
 
-const { validate, authenticate } = require("../middleware");
-const { AppError, Password, catchAsync } = require("../utils");
 const { dataSource } = require("../db");
+const { validate, authenticate } = require("../middleware");
+const { AppError, catchAsync } = require("../utils");
+const { PASSWORD, ERROR_MESSAGE } = require("../constants");
 
 const userRepository = dataSource.getRepository("User");
+
+const { FIELD_INVALID } = ERROR_MESSAGE;
 
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync(
 	"dummy-for-timing-equalization",
@@ -18,17 +21,17 @@ const DUMMY_PASSWORD_HASH = bcrypt.hashSync(
 
 router.post(
 	"/signup",
-	body(["name", "email"], "欄位未填寫正確").isString().bail().trim().notEmpty(),
-	body("email", "欄位未填寫正確").isEmail().toLowerCase(),
+	body(["name", "email"], FIELD_INVALID).isString().bail().trim().notEmpty(),
+	body("email", FIELD_INVALID).isEmail().toLowerCase(),
 	body("password")
 		.isString()
 		.bail()
-		.withMessage("欄位未填寫正確")
+		.withMessage(FIELD_INVALID)
 		.notEmpty()
 		.bail()
-		.withMessage("欄位未填寫正確")
-		.matches(Password.regex)
-		.withMessage(Password.message),
+		.withMessage(FIELD_INVALID)
+		.matches(PASSWORD.REGEX)
+		.withMessage(PASSWORD.MESSAGE),
 	validate,
 	catchAsync(async (req, res, next) => {
 		const { name, email, password } = req.body;
@@ -77,7 +80,7 @@ router.post(
 
 router.post(
 	"/login",
-	body("email", "欄位未填寫正確")
+	body("email", FIELD_INVALID)
 		.isString()
 		.bail()
 		.trim()
@@ -88,12 +91,12 @@ router.post(
 	body("password")
 		.isString()
 		.bail()
-		.withMessage("欄位未填寫正確")
+		.withMessage(FIELD_INVALID)
 		.notEmpty()
 		.bail()
-		.withMessage("欄位未填寫正確")
-		.matches(Password.regex)
-		.withMessage(Password.message),
+		.withMessage(FIELD_INVALID)
+		.matches(PASSWORD.REGEX)
+		.withMessage(PASSWORD.MESSAGE),
 	validate,
 	catchAsync(async (req, res, next) => {
 		const { email, password } = req.body;
@@ -156,7 +159,7 @@ router.get(
 router.put(
 	"/profile",
 	authenticate,
-	body("name", "欄位未填寫正確").isString().bail().trim().notEmpty(),
+	body("name", FIELD_INVALID).isString().bail().trim().notEmpty(),
 	validate,
 	catchAsync(async (req, res, next) => {
 		const { id, name } = req.user;
@@ -189,12 +192,12 @@ router.put(
 	body(["password", "new_password", "confirm_new_password"])
 		.isString()
 		.bail()
-		.withMessage("欄位未填寫正確")
+		.withMessage(FIELD_INVALID)
 		.notEmpty()
 		.bail()
-		.withMessage("欄位未填寫正確")
-		.matches(Password.regex)
-		.withMessage(Password.message),
+		.withMessage(FIELD_INVALID)
+		.matches(PASSWORD.REGEX)
+		.withMessage(PASSWORD.MESSAGE),
 	validate,
 	catchAsync(async (req, res, next) => {
 		const { password, new_password, confirm_new_password } = req.body;

@@ -4,10 +4,13 @@ const { body, param } = require("express-validator");
 const { dataSource } = require("../db");
 const { validate } = require("../middleware");
 const { AppError, catchAsync } = require("../utils");
+const { ERROR_MESSAGE } = require("../constants");
 
 const router = express.Router();
 
 const skillRepository = dataSource.getRepository("Skill");
+
+const { FIELD_INVALID, ID_INVALID } = ERROR_MESSAGE;
 
 router.get(
 	"/",
@@ -28,7 +31,7 @@ router.get(
 
 router.post(
 	"/",
-	body("name", "欄位未填寫正確").isString().bail().trim().notEmpty(),
+	body("name", FIELD_INVALID).isString().bail().trim().notEmpty(),
 	validate,
 	catchAsync(async (req, res, next) => {
 		const { name } = req.body;
@@ -55,7 +58,7 @@ router.post(
 
 router.delete(
 	"/:skillId",
-	param("skillId", "格式錯誤").trim().isUUID(),
+	param("skillId", ID_INVALID).trim().isUUID(),
 	validate,
 	catchAsync(async (req, res, next) => {
 		const { skillId } = req.params;

@@ -4,10 +4,13 @@ const { body, param } = require("express-validator");
 const { dataSource } = require("../db");
 const { validate } = require("../middleware");
 const { AppError, catchAsync } = require("../utils");
+const { ERROR_MESSAGE } = require("../constants");
 
 const router = express.Router();
 
 const packageRepository = dataSource.getRepository("Package");
+
+const { FIELD_INVALID, ID_INVALID } = ERROR_MESSAGE;
 
 router.get(
 	"/",
@@ -30,8 +33,8 @@ router.get(
 
 router.post(
 	"/",
-	body("name", "欄位未填寫正確").isString().bail().trim().notEmpty(),
-	body(["credit_amount", "price"], "欄位未填寫正確").custom(
+	body("name", FIELD_INVALID).isString().bail().trim().notEmpty(),
+	body(["credit_amount", "price"], FIELD_INVALID).custom(
 		(value) => Number.isInteger(value) && value >= 0,
 	),
 	validate,
@@ -66,7 +69,7 @@ router.post(
 
 router.delete(
 	"/:creditPackageId",
-	param("creditPackageId", "格式錯誤").trim().isUUID(),
+	param("creditPackageId", ID_INVALID).trim().isUUID(),
 	validate,
 	catchAsync(async (req, res, next) => {
 		const { creditPackageId } = req.params;
