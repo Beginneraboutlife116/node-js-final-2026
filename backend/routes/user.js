@@ -23,6 +23,7 @@ router.post(
 	"/signup",
 	body(["name", "email"], FIELD_INVALID).isString().bail().trim().notEmpty(),
 	body("email", FIELD_INVALID).isEmail().toLowerCase(),
+	body("name", FIELD_INVALID).isLength({ max: 255 }),
 	body("password")
 		.isString()
 		.bail()
@@ -160,6 +161,7 @@ router.put(
 	"/profile",
 	authenticate,
 	body("name", FIELD_INVALID).isString().bail().trim().notEmpty(),
+	body("name", FIELD_INVALID).isLength({ max: 255 }),
 	validate,
 	catchAsync(async (req, res, next) => {
 		const { id, name } = req.user;
