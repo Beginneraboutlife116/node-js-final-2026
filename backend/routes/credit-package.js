@@ -34,6 +34,7 @@ router.get(
 router.post(
 	"/",
 	body("name", FIELD_INVALID).isString().bail().trim().notEmpty(),
+	body("name", FIELD_INVALID).isLength({ max: 255 }),
 	body(["credit_amount", "price"], FIELD_INVALID).custom(
 		(value) => Number.isInteger(value) && value >= 0,
 	),
