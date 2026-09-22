@@ -32,6 +32,7 @@ router.get(
 router.post(
 	"/",
 	body("name", FIELD_INVALID).isString().bail().trim().notEmpty(),
+	body("name", FIELD_INVALID).isLength({ max: 255 }),
 	validate,
 	catchAsync(async (req, res, next) => {
 		const { name } = req.body;
