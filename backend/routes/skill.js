@@ -10,7 +10,8 @@ const router = express.Router();
 
 const skillRepository = dataSource.getRepository("Skill");
 
-const { FIELD_INVALID, ID_INVALID } = ERROR_MESSAGE;
+const { DUPLICATED, FIELD_INVALID, ID_INVALID, SKILL_NOT_FOUND } =
+	ERROR_MESSAGE;
 
 router.get(
 	"/",
@@ -36,12 +37,10 @@ router.post(
 	validate,
 	catchAsync(async (req, res, next) => {
 		const { name } = req.body;
-		const foundSkill = await skillRepository.findOneBy({
-			name,
-		});
+		const isSkillExisted = await skillRepository.existsBy({ name });
 
-		if (foundSkill !== null) {
-			return next(new AppError(409, "資料重複"));
+		if (isSkillExisted) {
+			return next(new AppError(409, DUPLICATED));
 		}
 
 		const newSkill = await skillRepository.save({ name });
@@ -63,15 +62,13 @@ router.delete(
 	validate,
 	catchAsync(async (req, res, next) => {
 		const { skillId } = req.params;
-		const foundSkill = await skillRepository.findOneBy({
-			id: skillId,
-		});
+		const isSkillExisted = await skillRepository.existsBy({ id: skillId });
 
-		if (foundSkill === null) {
-			return next(new AppError(400, "ID錯誤"));
+		if (!isSkillExisted) {
+			return next(new AppError(400, SKILL_NOT_FOUND));
 		}
 
-		const deleteResult = await skillRepository.delete(foundSkill.id);
+		const deleteResult = await skillRepository.delete(skillId);
 
 		return res.status(200).json({
 			status: "success",

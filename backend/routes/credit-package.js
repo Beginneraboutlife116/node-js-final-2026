@@ -10,7 +10,7 @@ const router = express.Router();
 
 const packageRepository = dataSource.getRepository("Package");
 
-const { FIELD_INVALID, ID_INVALID } = ERROR_MESSAGE;
+const { DUPLICATED, FIELD_INVALID, ID_INVALID } = ERROR_MESSAGE;
 
 router.get(
 	"/",
@@ -41,12 +41,10 @@ router.post(
 	validate,
 	catchAsync(async (req, res, next) => {
 		const { name, credit_amount, price } = req.body;
-		const foundPackage = await packageRepository.findOneBy({
-			name,
-		});
+		const isPackageExisted = await packageRepository.existsBy({ name });
 
-		if (foundPackage !== null) {
-			return next(new AppError(409, "資料重複"));
+		if (isPackageExisted) {
+			return next(new AppError(409, DUPLICATED));
 		}
 
 		const newPackage = await packageRepository.save({
@@ -74,15 +72,15 @@ router.delete(
 	validate,
 	catchAsync(async (req, res, next) => {
 		const { creditPackageId } = req.params;
-		const foundPackage = await packageRepository.findOneBy({
+		const isPackageExisted = await packageRepository.existsBy({
 			id: creditPackageId,
 		});
 
-		if (foundPackage === null) {
-			return next(new AppError(400, "ID錯誤"));
+		if (!isPackageExisted) {
+			return next(new AppError(400, "組合包不存在"));
 		}
 
-		const deleteResult = await packageRepository.delete(foundPackage.id);
+		const deleteResult = await packageRepository.delete(creditPackageId);
 
 		return res.json({
 			status: "success",
