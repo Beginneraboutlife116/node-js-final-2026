@@ -36,11 +36,9 @@ router.post(
 	validate,
 	catchAsync(async (req, res, next) => {
 		const { name, email, password } = req.body;
-		const foundUser = await userRepository.findOneBy({
-			email,
-		});
+		const isEmailExisted = await userRepository.existsBy({ email });
 
-		if (foundUser !== null) {
+		if (isEmailExisted) {
 			return next(new AppError(409, "Email 已被使用"));
 		}
 
@@ -49,23 +47,11 @@ router.post(
 			Number(process.env.SALT_ROUNDS) || 10,
 		);
 
-		// 上面的 findOneBy 只是為了回漂亮的 409；併發時兩個請求會同時通過檢查，
-		// 真正的保證來自 users.email 的唯一約束（Postgres unique_violation = 23505）。
-		let newUser;
-
-		try {
-			newUser = await userRepository.save({
-				name,
-				email,
-				password: hashedPassword,
-			});
-		} catch (error) {
-			if (error.code === "23505") {
-				return next(new AppError(409, "Email 已被使用"));
-			}
-
-			throw error;
-		}
+		const newUser = await userRepository.save({
+			name,
+			email,
+			password: hashedPassword,
+		});
 
 		return res.status(201).json({
 			status: "success",
