@@ -58,7 +58,7 @@ router.post(
 
 router.delete(
 	"/:skillId",
-	param("skillId", ID_INVALID).trim().isUUID(),
+	param("skillId", ID_INVALID).isUUID(),
 	validate,
 	catchAsync(async (req, res, next) => {
 		const { skillId } = req.params;

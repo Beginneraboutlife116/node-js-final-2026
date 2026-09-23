@@ -68,7 +68,7 @@ router.post(
 
 router.delete(
 	"/:creditPackageId",
-	param("creditPackageId", ID_INVALID).trim().isUUID(),
+	param("creditPackageId", ID_INVALID).isUUID(),
 	validate,
 	catchAsync(async (req, res, next) => {
 		const { creditPackageId } = req.params;
