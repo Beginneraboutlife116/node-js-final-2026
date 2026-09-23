@@ -1,5 +1,6 @@
 const express = require("express");
 const { param, body } = require("express-validator");
+const { In } = require("typeorm");
 
 const { validate, authenticate } = require("../middleware");
 const { catchAsync, AppError } = require("../utils");
@@ -10,10 +11,17 @@ const router = express.Router();
 
 const userRepository = dataSource.getRepository("User");
 const coachRepository = dataSource.getRepository("Coach");
+const skillRepository = dataSource.getRepository("Skill");
 const courseRepository = dataSource.getRepository("Course");
 
-const { FIELD_INVALID, ID_INVALID, NOT_A_COACH, ALREADY_A_COACH } =
-	ERROR_MESSAGE;
+const {
+	FIELD_INVALID,
+	ID_INVALID,
+	NOT_A_COACH,
+	ALREADY_A_COACH,
+	SKILL_NOT_FOUND,
+	UPDATE_FAILED,
+} = ERROR_MESSAGE;
 const { COACH } = ROLE;
 const { NOT_STARTED, IN_PROGRESS, ENDED } = COURSE_STATUS;
 
@@ -62,11 +70,12 @@ router.put(
 		.trim()
 		.notEmpty(),
 	body("profile_image_url", FIELD_INVALID).matches(/^https:\/\//),
+	body("profile_image_url", FIELD_INVALID).isLength({ max: 2048 }),
 	body("skill_ids", FIELD_INVALID)
 		.isArray({ min: 1 })
 		.bail()
 		.custom((value) => new Set(value).size === value.length),
-	body("skill_ids.*", FIELD_INVALID).isString().bail().isUUID(),
+	body("skill_ids.*", FIELD_INVALID).isString().bail().trim().isUUID(),
 	validate,
 	catchAsync(async (req, res, next) => {
 		const { id, role } = req.user;
@@ -76,28 +85,24 @@ router.put(
 			return next(new AppError(401, NOT_A_COACH));
 		}
 
-		const foundCoach = await coachRepository.findOneBy({ user: { id } });
 		const { experience_years, description, profile_image_url, skill_ids } =
 			req.body;
-		let updatedCoach;
+		const isSkillExisted = await skillRepository.existsBy({
+			id: In(skill_ids),
+		});
 
-		try {
-			updatedCoach = await coachRepository.save({
-				id: foundCoach.id,
-				experience_years,
-				description,
-				profile_image_url,
-				skills: skill_ids.map((skillId) => ({ id: skillId })),
-			});
-		} catch (error) {
-			if (error.code === "23503") {
-				return next(new AppError(400, FIELD_INVALID));
-			}
-
-			throw error;
+		if (!isSkillExisted) {
+			return next(new AppError(400, SKILL_NOT_FOUND));
 		}
 
-		const { skills, updated_at, ...rest } = updatedCoach;
+		const foundCoach = await coachRepository.findOneBy({ user: { id } });
+		const { skills, updated_at, ...rest } = await coachRepository.save({
+			id: foundCoach.id,
+			experience_years,
+			description,
+			profile_image_url,
+			skills: skill_ids.map((skillId) => ({ id: skillId })),
+		});
 
 		return res.json({
 			status: "success",
@@ -168,8 +173,10 @@ router.post(
 		.bail()
 		.trim()
 		.notEmpty(),
-	body("skill_id", FIELD_INVALID).isUUID(),
+	body("skill_id", ID_INVALID).isUUID(),
+	body("name", FIELD_INVALID).isLength({ max: 255 }),
 	body("meeting_url", FIELD_INVALID).matches(/^https:\/\//),
+	body("meeting_url", FIELD_INVALID).isLength({ max: 2048 }),
 	body(["start_at", "end_at"], FIELD_INVALID)
 		.isISO8601({
 			strict: true,
@@ -201,6 +208,12 @@ router.post(
 			max_participants,
 			meeting_url,
 		} = req.body;
+		const isSkillExisted = await skillRepository.existsBy({ id: skill_id });
+
+		if (!isSkillExisted) {
+			return next(new AppError(400, SKILL_NOT_FOUND));
+		}
+
 		const { skill, user, ...rest } = await courseRepository.save({
 			name,
 			description,
@@ -227,7 +240,7 @@ router.post(
 
 router.post(
 	"/:userId",
-	param("userId", ID_INVALID).trim().isUUID(),
+	param("userId", ID_INVALID).isUUID(),
 	body("experience_years", FIELD_INVALID).custom(
 		(value) => Number.isInteger(value) && value >= 0,
 	),
@@ -238,18 +251,20 @@ router.post(
 		.bail()
 		.trim()
 		.matches(/^https:\/\//),
+	body("profile_image_url", FIELD_INVALID).isLength({ max: 2048 }),
 	validate,
 	catchAsync(async (req, res, next) => {
 		const { userId } = req.params;
 		const foundUser = await userRepository.findOneBy({
 			id: userId,
 		});
+		const isCoach = foundUser.role === COACH;
 
 		if (foundUser === null) {
 			return next(new AppError(400, "使用者不存在"));
 		}
 
-		if (foundUser.role === COACH) {
+		if (isCoach) {
 			return next(new AppError(409, ALREADY_A_COACH));
 		}
 
@@ -258,28 +273,16 @@ router.post(
 			description,
 			profile_image_url = null,
 		} = req.body;
-		let newCoach;
+		const { user, ...rest } = await dataSource.transaction(async (manager) => {
+			await manager.update("User", foundUser.id, { role: COACH });
 
-		try {
-			newCoach = await dataSource.transaction(async (manager) => {
-				await manager.update("User", foundUser.id, { role: COACH });
-
-				return manager.save("Coach", {
-					experience_years,
-					description,
-					profile_image_url,
-					user: { id: foundUser.id },
-				});
+			return manager.save("Coach", {
+				experience_years,
+				description,
+				profile_image_url,
+				user: { id: foundUser.id },
 			});
-		} catch (error) {
-			if (error.code === "23505") {
-				return next(new AppError(409, ALREADY_A_COACH));
-			}
-
-			throw error;
-		}
-
-		const { user, ...rest } = newCoach;
+		});
 
 		return res.status(201).json({
 			status: "success",
@@ -294,47 +297,141 @@ router.post(
 	}),
 );
 
-router.get("/courses/:courseId", authenticate, param('courseId', ID_INVALID).isUUID(), validate, catchAsync(async (req, res, next) => {
-	const { courseId } = req.params;
-	const { id } = req.user;
-	const foundCourse = await courseRepository.findOne({
-		select: {
-			id: true,
-			name: true,
-			description: true,
-			start_at: true,
-			end_at: true,
-			max_participants: true,
-			meeting_url: true,
-			skill: { id: true, name: true }
-		},
-		where: {
+router.get(
+	"/courses/:courseId",
+	authenticate,
+	param("courseId", ID_INVALID).isUUID(),
+	validate,
+	catchAsync(async (req, res, next) => {
+		const { courseId } = req.params;
+		const { id } = req.user;
+		const foundCourse = await courseRepository.findOne({
+			select: {
+				id: true,
+				name: true,
+				description: true,
+				start_at: true,
+				end_at: true,
+				max_participants: true,
+				meeting_url: true,
+				skill: { id: true, name: true },
+			},
+			where: {
+				id: courseId,
+				user: {
+					id,
+				},
+			},
+			relations: {
+				skill: true,
+			},
+		});
+
+		if (foundCourse === null) {
+			return next(new AppError(400, "課程不存在"));
+		}
+
+		const { skill, ...rest } = foundCourse;
+
+		return res.json({
+			status: "success",
+			data: {
+				...rest,
+				skill_name: skill.name,
+				skill_id: skill.id,
+			},
+		});
+	}),
+);
+
+router.put(
+	"/courses/:courseId",
+	authenticate,
+	param("courseId", ID_INVALID).isUUID(),
+	body(
+		["skill_id", "name", "description", "start_at", "end_at", "meeting_url"],
+		FIELD_INVALID,
+	)
+		.isString()
+		.bail()
+		.trim()
+		.notEmpty(),
+	body("skill_id", ID_INVALID).isUUID(),
+	body("name", FIELD_INVALID).isLength({ max: 255 }),
+	body("meeting_url", FIELD_INVALID).matches(/^https:\/\//),
+	body("meeting_url", FIELD_INVALID).isLength({ max: 2048 }),
+	body(["start_at", "end_at"], FIELD_INVALID)
+		.isISO8601({
+			strict: true,
+			strictSeparator: true,
+		})
+		.bail()
+		.matches(/Z$/),
+	body("max_participants", FIELD_INVALID).custom(
+		(value) => Number.isInteger(value) && value >= 0,
+	),
+	body("end_at", FIELD_INVALID).custom(
+		(value, { req }) => new Date(value) > new Date(req.body.start_at),
+	),
+	validate,
+	catchAsync(async (req, res, next) => {
+		const { id } = req.user;
+		const { courseId } = req.params;
+		const isCourseExisted = await courseRepository.existsBy({
 			id: courseId,
 			user: {
-				id
-			}
-		},
-		relations: {
-			skill: true
+				id,
+			},
+		});
+
+		if (!isCourseExisted) {
+			return next(new AppError(400, "課程不存在"));
 		}
-	})
 
-	if (foundCourse === null) {
-		return next(new AppError(400, '課程不存在'));
-	}
+		const {
+			skill_id,
+			name,
+			description,
+			start_at,
+			end_at,
+			max_participants,
+			meeting_url,
+		} = req.body;
+		const isSkillExisted = await skillRepository.existsBy({ id: skill_id });
 
-	const { skill, ...rest } = foundCourse;
+		if (!isSkillExisted) {
+			return next(new AppError(400, SKILL_NOT_FOUND));
+		}
 
-	return res.json({
-		status: 'success',
-		data: {
-			...rest,
-			skill_name: skill.name,
-			skill_id: skill.id
-		},
-	})
-}));
+		const updateResult = await courseRepository.update(
+			courseId,
+			{
+				name,
+				meeting_url,
+				description,
+				max_participants,
+				start_at,
+				end_at,
+				skill: {
+					id: skill_id,
+				},
+			},
+			{ returning: "*" },
+		);
 
-router.put("/courses/:courseId");
+		if (updateResult.affected === 0) {
+			return next(new AppError(400, UPDATE_FAILED));
+		}
+
+		const { raw: updateCourse } = updateResult;
+
+		return res.json({
+			status: "success",
+			data: {
+				course: updateCourse,
+			},
+		});
+	}),
+);
 
 module.exports = router;
