@@ -53,6 +53,7 @@ module.exports = new EntitySchema({
 			nullable: false,
 			joinColumn: {
 				name: "user_id",
+				foreignKeyConstraintName: "FK_courses_user_id",
 			},
 		},
 		skill: {
@@ -61,6 +62,7 @@ module.exports = new EntitySchema({
 			nullable: false,
 			joinColumn: {
 				name: "skill_id",
+				foreignKeyConstraintName: "FK_courses_skill_id",
 			},
 		},
 	},

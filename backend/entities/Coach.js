@@ -40,6 +40,7 @@ module.exports = new EntitySchema({
 			nullable: false,
 			joinColumn: {
 				name: "user_id",
+				foreignKeyConstraintName: "FK_coaches_user_id",
 			},
 		},
 		skills: {
@@ -49,11 +50,14 @@ module.exports = new EntitySchema({
 				name: "skills_link_coaches",
 				joinColumn: {
 					name: "coach_id",
+					foreignKeyConstraintName: "FK_skills_link_coaches_coach_id",
 				},
 				inverseJoinColumn: {
 					name: "skill_id",
+					foreignKeyConstraintName: "FK_skills_link_coaches_skill_id",
 				},
 			},
 		},
 	},
+	uniques: [{ name: "UQ_coaches_user_id", columns: ["user"] }],
 });

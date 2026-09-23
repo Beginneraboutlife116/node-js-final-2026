@@ -26,6 +26,7 @@ module.exports = new EntitySchema({
 			nullable: false,
 			joinColumn: {
 				name: "user_id",
+				foreignKeyConstraintName: "FK_bookings_user_id",
 			},
 		},
 		course: {
@@ -34,8 +35,11 @@ module.exports = new EntitySchema({
 			nullable: false,
 			joinColumn: {
 				name: "course_id",
+				foreignKeyConstraintName: "FK_bookings_course_id",
 			},
 		},
 	},
-	uniques: [{ columns: ["user", "course"] }],
+	uniques: [
+		{ name: "UQ_bookings_user_id_course_id", columns: ["user", "course"] },
+	],
 });

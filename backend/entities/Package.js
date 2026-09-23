@@ -12,7 +12,6 @@ module.exports = new EntitySchema({
 		name: {
 			type: "varchar",
 			length: 255,
-			unique: true,
 			nullable: false,
 		},
 		credit_amount: {
@@ -34,4 +33,5 @@ module.exports = new EntitySchema({
 			updateDate: true,
 		},
 	},
+	uniques: [{ name: "UQ_packages_name", columns: ["name"] }],
 });

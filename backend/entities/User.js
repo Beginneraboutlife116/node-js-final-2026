@@ -17,7 +17,6 @@ module.exports = new EntitySchema({
 		email: {
 			type: "varchar",
 			length: 255,
-			unique: true,
 			nullable: false,
 		},
 		password: {
@@ -43,4 +42,5 @@ module.exports = new EntitySchema({
 			updateDate: true,
 		},
 	},
+	uniques: [{ name: "UQ_users_email", columns: ["email"] }],
 });

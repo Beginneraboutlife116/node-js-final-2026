@@ -30,6 +30,7 @@ module.exports = new EntitySchema({
 			nullable: false,
 			joinColumn: {
 				name: "user_id",
+				foreignKeyConstraintName: "FK_purchases_user_id",
 			},
 		},
 		package: {
@@ -38,6 +39,7 @@ module.exports = new EntitySchema({
 			nullable: false,
 			joinColumn: {
 				name: "package_id",
+				foreignKeyConstraintName: "FK_purchases_package_id",
 			},
 		},
 	},

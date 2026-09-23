@@ -13,7 +13,6 @@ module.exports = new EntitySchema({
 			type: "varchar",
 			length: 255,
 			nullable: false,
-			unique: true,
 		},
 		created_at: {
 			type: "timestamptz",
@@ -26,4 +25,5 @@ module.exports = new EntitySchema({
 			updateDate: true,
 		},
 	},
+	uniques: [{ name: "UQ_skills_name", columns: ["name"] }],
 });
