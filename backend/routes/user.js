@@ -12,7 +12,7 @@ const { PASSWORD, ERROR_MESSAGE } = require("../constants");
 
 const userRepository = dataSource.getRepository("User");
 
-const { FIELD_INVALID, UPDATE_FAILED } = ERROR_MESSAGE;
+const { EMAIL_TAKEN, FIELD_INVALID, UPDATE_FAILED } = ERROR_MESSAGE;
 
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync(
 	"dummy-for-timing-equalization",
@@ -39,7 +39,7 @@ router.post(
 		const isEmailExisted = await userRepository.existsBy({ email });
 
 		if (isEmailExisted) {
-			return next(new AppError(409, "Email 已被使用"));
+			return next(new AppError(409, EMAIL_TAKEN));
 		}
 
 		const hashedPassword = await bcrypt.hash(

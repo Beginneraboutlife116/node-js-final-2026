@@ -87,11 +87,11 @@ router.put(
 
 		const { experience_years, description, profile_image_url, skill_ids } =
 			req.body;
-		const isSkillExisted = await skillRepository.existsBy({
+		const foundSkillCount = await skillRepository.countBy({
 			id: In(skill_ids),
 		});
 
-		if (!isSkillExisted) {
+		if (foundSkillCount !== skill_ids.length) {
 			return next(new AppError(400, SKILL_NOT_FOUND));
 		}
 
