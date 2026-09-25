@@ -12,7 +12,7 @@ const { PASSWORD, ERROR_MESSAGE } = require("../constants");
 
 const userRepository = dataSource.getRepository("User");
 
-const { EMAIL_TAKEN, FIELD_INVALID, UPDATE_FAILED } = ERROR_MESSAGE;
+const { EMAIL_TAKEN, FIELD_INVALID, USER_NOT_FOUND } = ERROR_MESSAGE;
 
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync(
 	"dummy-for-timing-equalization",
@@ -160,7 +160,7 @@ router.put(
 		const updateResult = await userRepository.update(id, { name: newName });
 
 		if (updateResult.affected === 0) {
-			return next(new AppError(400, UPDATE_FAILED));
+			return next(new AppError(400, USER_NOT_FOUND));
 		}
 
 		return res.json({
@@ -221,7 +221,7 @@ router.put(
 		});
 
 		if (updateResult.affected === 0) {
-			return next(new AppError(400, UPDATE_FAILED));
+			return next(new AppError(400, USER_NOT_FOUND));
 		}
 
 		return res.json({

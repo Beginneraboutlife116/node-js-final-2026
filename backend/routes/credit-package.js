@@ -10,7 +10,7 @@ const router = express.Router();
 
 const packageRepository = dataSource.getRepository("Package");
 
-const { DUPLICATED, FIELD_INVALID, ID_INVALID } = ERROR_MESSAGE;
+const { NAME_TAKEN, FIELD_INVALID, ID_INVALID } = ERROR_MESSAGE;
 
 router.get(
 	"/",
@@ -44,7 +44,7 @@ router.post(
 		const isPackageExisted = await packageRepository.existsBy({ name });
 
 		if (isPackageExisted) {
-			return next(new AppError(409, DUPLICATED));
+			return next(new AppError(409, NAME_TAKEN));
 		}
 
 		const newPackage = await packageRepository.save({

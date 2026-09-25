@@ -10,7 +10,7 @@ const router = express.Router();
 
 const skillRepository = dataSource.getRepository("Skill");
 
-const { DUPLICATED, FIELD_INVALID, ID_INVALID, SKILL_NOT_FOUND } =
+const { NAME_TAKEN, FIELD_INVALID, ID_INVALID, SKILL_NOT_FOUND } =
 	ERROR_MESSAGE;
 
 router.get(
@@ -40,7 +40,7 @@ router.post(
 		const isSkillExisted = await skillRepository.existsBy({ name });
 
 		if (isSkillExisted) {
-			return next(new AppError(409, DUPLICATED));
+			return next(new AppError(409, NAME_TAKEN));
 		}
 
 		const newSkill = await skillRepository.save({ name });

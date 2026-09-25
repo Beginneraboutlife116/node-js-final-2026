@@ -20,7 +20,8 @@ const {
 	NOT_A_COACH,
 	ALREADY_A_COACH,
 	SKILL_NOT_FOUND,
-	UPDATE_FAILED,
+	COURSE_NOT_FOUND,
+	USER_NOT_FOUND,
 } = ERROR_MESSAGE;
 const { COACH } = ROLE;
 const { NOT_STARTED, IN_PROGRESS, ENDED } = COURSE_STATUS;
@@ -258,11 +259,12 @@ router.post(
 		const foundUser = await userRepository.findOneBy({
 			id: userId,
 		});
-		const isCoach = foundUser.role === COACH;
 
 		if (foundUser === null) {
-			return next(new AppError(400, "使用者不存在"));
+			return next(new AppError(400, USER_NOT_FOUND));
 		}
+
+		const isCoach = foundUser.role === COACH;
 
 		if (isCoach) {
 			return next(new AppError(409, ALREADY_A_COACH));
@@ -328,7 +330,7 @@ router.get(
 		});
 
 		if (foundCourse === null) {
-			return next(new AppError(400, "課程不存在"));
+			return next(new AppError(400, COURSE_NOT_FOUND));
 		}
 
 		const { skill, ...rest } = foundCourse;
@@ -385,7 +387,7 @@ router.put(
 		});
 
 		if (!isCourseExisted) {
-			return next(new AppError(400, "課程不存在"));
+			return next(new AppError(400, COURSE_NOT_FOUND));
 		}
 
 		const {
@@ -420,7 +422,7 @@ router.put(
 		);
 
 		if (updateResult.affected === 0) {
-			return next(new AppError(400, UPDATE_FAILED));
+			return next(new AppError(400, COURSE_NOT_FOUND));
 		}
 
 		const { raw: updateCourse } = updateResult;
