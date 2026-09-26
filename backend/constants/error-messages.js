@@ -8,6 +8,7 @@ const ERROR_MESSAGE = Object.freeze({
 	SKILL_NOT_FOUND: "技能不存在",
 	COURSE_NOT_FOUND: "課程不存在",
 	USER_NOT_FOUND: "使用者不存在",
+	COACH_NOT_FOUND: "找不到該教練",
 });
 
 module.exports = ERROR_MESSAGE;
