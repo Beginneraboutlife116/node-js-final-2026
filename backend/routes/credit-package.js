@@ -2,7 +2,7 @@ const express = require("express");
 const { body, param } = require("express-validator");
 
 const { dataSource } = require("../db");
-const { validate } = require("../middleware");
+const { validate, authenticate } = require("../middleware");
 const { AppError, catchAsync } = require("../utils");
 const { ERROR_MESSAGE } = require("../constants");
 
@@ -10,7 +10,13 @@ const router = express.Router();
 
 const packageRepository = dataSource.getRepository("Package");
 
-const { NAME_TAKEN, FIELD_INVALID, ID_INVALID } = ERROR_MESSAGE;
+const {
+	NAME_TAKEN,
+	FIELD_INVALID,
+	ID_INVALID,
+	CREDIT_PACKAGE_NOT_FOUND,
+	CREDIT_PACKAGE_IN_USE,
+} = ERROR_MESSAGE;
 
 router.get(
 	"/",
@@ -70,21 +76,72 @@ router.delete(
 	"/:creditPackageId",
 	param("creditPackageId", ID_INVALID).isUUID(),
 	validate,
-	catchAsync(async (req, res, next) => {
+	catchAsync(async (req, res) => {
 		const { creditPackageId } = req.params;
-		const isPackageExisted = await packageRepository.existsBy({
-			id: creditPackageId,
+
+		const deleteResult = await dataSource.transaction(async (manager) => {
+			const lockedPackage = await manager.getRepository("Package").findOne({
+				select: { id: true },
+				where: { id: creditPackageId },
+				lock: { mode: "pessimistic_write" },
+			});
+
+			if (lockedPackage === null) {
+				throw new AppError(400, CREDIT_PACKAGE_NOT_FOUND);
+			}
+
+			const isBoughtCreditPackage = await manager
+				.getRepository("Purchase")
+				.existsBy({
+					package: { id: creditPackageId },
+				});
+
+			if (isBoughtCreditPackage) {
+				throw new AppError(409, CREDIT_PACKAGE_IN_USE);
+			}
+
+			return await manager.getRepository("Package").delete(creditPackageId);
 		});
-
-		if (!isPackageExisted) {
-			return next(new AppError(400, "組合包不存在"));
-		}
-
-		const deleteResult = await packageRepository.delete(creditPackageId);
 
 		return res.json({
 			status: "success",
 			data: deleteResult,
+		});
+	}),
+);
+
+router.post(
+	"/:creditPackageId",
+	authenticate,
+	param("creditPackageId", ID_INVALID).isUUID(),
+	validate,
+	catchAsync(async (req, res) => {
+		const { id } = req.user;
+		const { creditPackageId } = req.params;
+
+		await dataSource.transaction(async (manager) => {
+			const lockedPackage = await manager.getRepository("Package").findOne({
+				where: { id: creditPackageId },
+				lock: { mode: "for_key_share" },
+			});
+
+			if (lockedPackage === null) {
+				throw new AppError(400, CREDIT_PACKAGE_NOT_FOUND);
+			}
+
+			await manager.getRepository("Purchase").save({
+				purchased_credits: lockedPackage.credit_amount,
+				price_paid: lockedPackage.price,
+				user: {
+					id,
+				},
+				package: { id: creditPackageId },
+			});
+		});
+
+		return res.json({
+			status: "success",
+			data: null,
 		});
 	}),
 );

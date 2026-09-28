@@ -1,7 +1,12 @@
 const { ERROR_MESSAGE } = require("../constants");
 
-const { ALREADY_A_COACH, NAME_TAKEN, EMAIL_TAKEN, SKILL_NOT_FOUND } =
-	ERROR_MESSAGE;
+const {
+	ALREADY_A_COACH,
+	NAME_TAKEN,
+	EMAIL_TAKEN,
+	SKILL_NOT_FOUND,
+	ALREADY_BOOKED,
+} = ERROR_MESSAGE;
 
 // 正常路徑已經被各路由的 existsBy / countBy / findOne 擋掉了，
 // 會走到這裡代表是競態：先查通過之後、真正寫入之前資料被別的請求改掉。
@@ -11,6 +16,7 @@ const CONSTRAINT_ERROR = Object.freeze({
 	UQ_coaches_user_id: { statusCode: 409, message: ALREADY_A_COACH },
 	UQ_skills_name: { statusCode: 409, message: NAME_TAKEN },
 	UQ_packages_name: { statusCode: 409, message: NAME_TAKEN },
+	UQ_bookings_user_id_course_id: { statusCode: 400, message: ALREADY_BOOKED },
 	FK_courses_skill_id: { statusCode: 400, message: SKILL_NOT_FOUND },
 	FK_skills_link_coaches_skill_id: {
 		statusCode: 400,

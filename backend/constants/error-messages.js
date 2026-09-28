@@ -9,6 +9,10 @@ const ERROR_MESSAGE = Object.freeze({
 	COURSE_NOT_FOUND: "課程不存在",
 	USER_NOT_FOUND: "使用者不存在",
 	COACH_NOT_FOUND: "找不到該教練",
+	CREDIT_PACKAGE_NOT_FOUND: "組合包不存在",
+	ALREADY_BOOKED: "已經報名過此課程",
+	CREDIT_PACKAGE_IN_USE: "方案已有購買紀錄，無法刪除",
+	SKILL_IN_USE: "技能已有課程使用，無法刪除",
 });
 
 module.exports = ERROR_MESSAGE;

@@ -11,6 +11,8 @@ const { AppError, catchAsync } = require("../utils");
 const { PASSWORD, ERROR_MESSAGE } = require("../constants");
 
 const userRepository = dataSource.getRepository("User");
+const purchaseRepository = dataSource.getRepository("Purchase");
+const bookingRepository = dataSource.getRepository("Booking");
 
 const { EMAIL_TAKEN, FIELD_INVALID, USER_NOT_FOUND } = ERROR_MESSAGE;
 
@@ -227,6 +229,125 @@ router.put(
 		return res.json({
 			status: "success",
 			data: null,
+		});
+	}),
+);
+
+router.get(
+	"/credit-package",
+	authenticate,
+	catchAsync(async (req, res) => {
+		const { id } = req.user;
+
+		const foundPurchases = await purchaseRepository.find({
+			select: {
+				purchased_credits: true,
+				price_paid: true,
+				created_at: true,
+				package: {
+					name: true,
+				},
+			},
+			where: {
+				user: { id },
+			},
+			relations: {
+				package: true,
+			},
+			order: {
+				created_at: "desc",
+				purchased_credits: "desc",
+			},
+		});
+
+		return res.json({
+			status: "success",
+			data: foundPurchases.map(
+				({ package: packageObj, created_at, ...rest }) => ({
+					...rest,
+					name: packageObj.name,
+					purchase_at: created_at,
+				}),
+			),
+		});
+	}),
+);
+
+router.get(
+	"/courses",
+	authenticate,
+	catchAsync(async (req, res) => {
+		const { id } = req.user;
+		const [foundBookings, totalPurchasedCredits] = await Promise.all([
+			bookingRepository.find({
+				select: {
+					course: {
+						id: true,
+						name: true,
+						start_at: true,
+						end_at: true,
+						meeting_url: true,
+						user: {
+							name: true,
+						},
+					},
+				},
+				relations: {
+					course: {
+						user: true,
+					},
+				},
+				where: {
+					user: {
+						id,
+					},
+				},
+				order: {
+					course: {
+						start_at: "asc",
+					},
+					created_at: "asc",
+				},
+			}),
+			purchaseRepository.sum("purchased_credits", {
+				user: {
+					id,
+				},
+			}),
+		]);
+
+		const credit_usage = foundBookings.filter(
+			({ cancelled_at }) => !cancelled_at,
+		).length;
+		const credit_remain = (totalPurchasedCredits ?? 0) - credit_usage;
+
+		return res.json({
+			status: "success",
+			data: {
+				credit_remain,
+				credit_usage,
+				course_booking: foundBookings.map(
+					({
+						cancelled_at,
+						course: {
+							id,
+							name,
+							start_at,
+							end_at,
+							meeting_url,
+							user: { name: coach_name },
+						},
+					}) => ({
+						course_id: id,
+						name,
+						start_at,
+						end_at,
+						meeting_url,
+						coach_name,
+						cancelled_at,
+					}),
+				),
+			},
 		});
 	}),
 );
