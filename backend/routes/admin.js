@@ -1,11 +1,11 @@
 const express = require("express");
-const { param, body } = require("express-validator");
-const { In } = require("typeorm");
+const { param, body, query } = require("express-validator");
+const { In, IsNull, And, MoreThanOrEqual, LessThan } = require("typeorm");
 
 const { validate, authenticate } = require("../middleware");
 const { catchAsync, AppError } = require("../utils");
 const { dataSource } = require("../db");
-const { ERROR_MESSAGE, ROLE, COURSE_STATUS } = require("../constants");
+const { ERROR_MESSAGE, ROLE, COURSE_STATUS, MONTH } = require("../constants");
 
 const router = express.Router();
 
@@ -13,6 +13,8 @@ const userRepository = dataSource.getRepository("User");
 const coachRepository = dataSource.getRepository("Coach");
 const skillRepository = dataSource.getRepository("Skill");
 const courseRepository = dataSource.getRepository("Course");
+const packageRepository = dataSource.getRepository("Package");
+const bookingRepository = dataSource.getRepository("Booking");
 
 const {
 	FIELD_INVALID,
@@ -239,60 +241,64 @@ router.post(
 	}),
 );
 
-router.post(
-	"/:userId",
-	param("userId", ID_INVALID).isUUID(),
-	body("experience_years", FIELD_INVALID).custom(
-		(value) => Number.isInteger(value) && value >= 0,
-	),
-	body("description", FIELD_INVALID).isString().bail().trim().notEmpty(),
-	body("profile_image_url", FIELD_INVALID)
-		.optional({ values: "falsy" })
-		.isString()
-		.bail()
+router.get(
+	"/revenue",
+	authenticate,
+	query("month", FIELD_INVALID)
 		.trim()
-		.matches(/^https:\/\//),
-	body("profile_image_url", FIELD_INVALID).isLength({ max: 2048 }),
+		.notEmpty()
+		.bail()
+		.isIn(Object.keys(MONTH)),
 	validate,
 	catchAsync(async (req, res, next) => {
-		const { userId } = req.params;
-		const foundUser = await userRepository.findOneBy({
-			id: userId,
-		});
+		const { id, role } = req.user;
+		const { month } = req.query;
+		const isCoach = role === COACH;
 
-		if (foundUser === null) {
-			return next(new AppError(400, USER_NOT_FOUND));
+		if (!isCoach) {
+			return next(new AppError(401, NOT_A_COACH));
 		}
 
-		const isCoach = foundUser.role === COACH;
+		const totalCreditAmount = await packageRepository.sum("credit_amount");
+		const totalPrice = await packageRepository.sum("price");
+		const unitPrice = totalCreditAmount ? totalPrice / totalCreditAmount : 0;
 
-		if (isCoach) {
-			return next(new AppError(409, ALREADY_A_COACH));
-		}
-
-		const {
-			experience_years,
-			description,
-			profile_image_url = null,
-		} = req.body;
-		const { user, ...rest } = await dataSource.transaction(async (manager) => {
-			await manager.update("User", foundUser.id, { role: COACH });
-
-			return manager.save("Coach", {
-				experience_years,
-				description,
-				profile_image_url,
-				user: { id: foundUser.id },
-			});
+		const currentYear = new Date().getFullYear();
+		const monthIndex = MONTH[month] - 1;
+		const startDate = new Date(currentYear, monthIndex, 1);
+		const endDate = new Date(currentYear, monthIndex + 1, 1);
+		const foundBookings = await bookingRepository.find({
+			select: {
+				id: true,
+				user: {
+					id: true,
+				},
+			},
+			relations: {
+				user: true,
+			},
+			where: {
+				created_at: And(MoreThanOrEqual(startDate), LessThan(endDate)),
+				course: {
+					user: {
+						id,
+					},
+				},
+				cancelled_at: IsNull(),
+			},
 		});
 
-		return res.status(201).json({
+		const course_count = foundBookings.length;
+		const revenue = Math.floor(course_count * unitPrice);
+		const participants = new Set(foundBookings.map(({ user }) => user.id)).size;
+
+		return res.json({
 			status: "success",
 			data: {
-				user: { name: foundUser.name, role: COACH },
-				coach: {
-					...rest,
-					user_id: user.id,
+				total: {
+					revenue,
+					participants,
+					course_count,
 				},
 			},
 		});
@@ -431,6 +437,66 @@ router.put(
 			status: "success",
 			data: {
 				course: updateCourse,
+			},
+		});
+	}),
+);
+
+router.post(
+	"/:userId",
+	param("userId", ID_INVALID).isUUID(),
+	body("experience_years", FIELD_INVALID).custom(
+		(value) => Number.isInteger(value) && value >= 0,
+	),
+	body("description", FIELD_INVALID).isString().bail().trim().notEmpty(),
+	body("profile_image_url", FIELD_INVALID)
+		.optional({ values: "falsy" })
+		.isString()
+		.bail()
+		.trim()
+		.matches(/^https:\/\//),
+	body("profile_image_url", FIELD_INVALID).isLength({ max: 2048 }),
+	validate,
+	catchAsync(async (req, res, next) => {
+		const { userId } = req.params;
+		const foundUser = await userRepository.findOneBy({
+			id: userId,
+		});
+
+		if (foundUser === null) {
+			return next(new AppError(400, USER_NOT_FOUND));
+		}
+
+		const isCoach = foundUser.role === COACH;
+
+		if (isCoach) {
+			return next(new AppError(409, ALREADY_A_COACH));
+		}
+
+		const {
+			experience_years,
+			description,
+			profile_image_url = null,
+		} = req.body;
+		const { user, ...rest } = await dataSource.transaction(async (manager) => {
+			await manager.update("User", foundUser.id, { role: COACH });
+
+			return manager.save("Coach", {
+				experience_years,
+				description,
+				profile_image_url,
+				user: { id: foundUser.id },
+			});
+		});
+
+		return res.status(201).json({
+			status: "success",
+			data: {
+				user: { name: foundUser.name, role: COACH },
+				coach: {
+					...rest,
+					user_id: user.id,
+				},
 			},
 		});
 	}),
