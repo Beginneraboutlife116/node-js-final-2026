@@ -1,0 +1,25 @@
+{
+	"name": "backend",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"dev": "node --watch ./bin/www",
+		"start": "node ./bin/www",
+		"migration:generate": "typeorm migration:generate -d ./db/index.js -o",
+		"migration:run": "typeorm migration:run -d ./db/index.js",
+		"migration:revert": "typeorm migration:revert -d ./db/index.js"
+	},
+	"dependencies": {
+		"bcrypt": "^6.0.0",
+		"cookie-parser": "~1.4.4",
+		"cors": "^2.8.6",
+		"debug": "~2.6.9",
+		"dotenv": "^17.4.2",
+		"express": "~4.16.1",
+		"express-validator": "^7.3.2",
+		"jsonwebtoken": "^9.0.3",
+		"morgan": "~1.9.1",
+		"pg": "^8.23.0",
+		"typeorm": "^1.1.1"
+	}
+}
