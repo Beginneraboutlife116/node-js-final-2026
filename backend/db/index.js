@@ -14,6 +14,7 @@ const dataSource = new typeorm.DataSource({
 	synchronize: process.env.DB_SYNCHRONIZE === "true",
 	entities: [path.join(__dirname, "..", "entities", "*.js")],
 	migrations: [path.join(__dirname, "migrations", "*.js")],
+	migrationsRun: true,
 });
 
 module.exports = { dataSource };
